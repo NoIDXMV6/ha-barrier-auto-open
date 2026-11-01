@@ -1,0 +1,59 @@
+# Стек «авто-открытие шлагбаума по детекции машины».
+#
+#   mosquitto — MQTT-брокер (события Frigate → Home Assistant)
+#   mediamtx  — RTSP-сервер (мостик кладёт сюда потоки камер)
+#   bridge    — мостик облачных камер А.М.Видео/ЕГДС → RTSP
+#   frigate   — детекция машин (CPU, без GPU)
+#
+# Запуск:  cp bridge/config.example.yaml bridge/config.yaml  (заполнить!)
+#         docker compose up -d --build
+#
+# Home Assistant подключается к MQTT по адресу <IP-этой-машины>:1883
+# и к Frigate по адресу http://<IP-этой-машины>:5000.
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    ports:
+      - "1883:1883"
+
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    restart: unless-stopped
+    # Наружу порты не обязательны: frigate и bridge ходят внутри сети compose.
+    # Для проверки потока с другого устройства раскомментируйте:
+    # ports:
+    #   - "8554:8554"
+
+  bridge:
+    build: ./bridge
+    restart: unless-stopped
+    volumes:
+      - ./bridge/config.yaml:/config/config.yaml:ro
+    depends_on:
+      - mediamtx
+    environment:
+      - TZ=Europe/Moscow
+
+  frigate:
+    image: ghcr.io/blakeblackshear/frigate:0.18.2
+    restart: unless-stopped
+    shm_size: "512mb"
+    stop_grace_period: 30s
+    volumes:
+      - ./frigate/config.yml:/config/config.yml:ro
+      - frigate_media:/media/frigate
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "5000:5000"        # веб-интерфейс Frigate
+    depends_on:
+      - mosquitto
+      - mediamtx
+    environment:
+      - TZ=Europe/Moscow
+
+volumes:
+  frigate_media:

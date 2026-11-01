@@ -1,0 +1,69 @@
+# Уведомление «у шлагбаума машина» с фото и кнопкой «Открыть».
+#
+# Требуется: приложение HA на телефоне, в нём — браузер_mod не обязателен.
+# Замените:
+#   notify.mobile_app_ТЕЛЕФОН   — на своё (Настройки → Устройства)
+#   http://IP_ФРИГЕЙТА:5000     — на адрес Frigate (порт 5000 из docker-compose)
+#   entity_id кнопок            — на свои (Инструменты разработчика → Состояния,
+#                                 фильтр «otkryt»)
+
+alias: Шлагбаумы — машина у шлагбаума (уведомление)
+description: >
+  Frigate увидел машину на камере шлагбаума — на телефон приходит фото
+  и кнопки «Открыть» / «Игнорировать».
+mode: parallel
+max_exceeded: silent
+triggers:
+  - trigger: mqtt
+    topic: frigate/events
+    id: govorovo
+    value_template: >-
+      {{ value_json.type == 'new'
+         and value_json.after.camera == 'govorovo'
+         and value_json.after.label == 'car' }}
+  - trigger: mqtt
+    topic: frigate/events
+    id: lesnaia
+    value_template: >-
+      {{ value_json.type == 'new'
+         and value_json.after.camera == 'lesnaia'
+         and value_json.after.label == 'car' }}
+actions:
+  - choose:
+      # ---------- А.М.Видео: Говорово ----------
+      - conditions:
+          - condition: trigger
+            id: govorovo
+        sequence:
+          - action: notify.mobile_app_ТЕЛЕФОН
+            data:
+              title: "🚗 У шлагбаума машина — Говорово"
+              message: "Открыть шлагбаум?"
+              data:
+                image: >-
+                  http://IP_ФРИГЕЙТА:5000/api/{{ trigger.payload_json.after.id }}/thumbnail.jpg
+                tag: barrier-govorovo
+                actions:
+                  - action: OPEN_GOVOROVO
+                    title: "Открыть"
+                  - action: BARRIER_IGNORE
+                    title: "Игнорировать"
+
+      # ---------- ЕГДС: Ул. Лесная №1 ----------
+      - conditions:
+          - condition: trigger
+            id: lesnaia
+        sequence:
+          - action: notify.mobile_app_ТЕЛЕФОН
+            data:
+              title: "🚗 У шлагбаума машина — Ул. Лесная"
+              message: "Открыть шлагбаум?"
+              data:
+                image: >-
+                  http://IP_ФРИГЕЙТА:5000/api/{{ trigger.payload_json.after.id }}/thumbnail.jpg
+                tag: barrier-lesnaia
+                actions:
+                  - action: OPEN_LESNAIA
+                    title: "Открыть"
+                  - action: BARRIER_IGNORE
+                    title: "Игнорировать"

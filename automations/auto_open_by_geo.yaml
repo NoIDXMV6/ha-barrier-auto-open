@@ -1,0 +1,61 @@
+# Полностью автоматическое открытие: машина у шлагбаума + ваш телефон в пути.
+#
+# Логика: Frigate увидел машину И ваш телефон (в машине) НЕ дома — открыть.
+# Гости, курьеры и соседи без вас шлагбаум не откроют.
+#
+# Замените:
+#   device_tracker.ТЕЛЕФОН — на сущность трекера телефона
+#     (приложение HA на телефоне, Настройки → Устройства → сущность трекера).
+#   entity_id кнопок — на свои.
+#
+# Вариант «по геозоне»: замените условие state на
+#   - condition: zone
+#     entity_id: device_tracker.ТЕЛЕФОН
+#     zone: zone.ПОСЁЛОК      # зона, созданная вокруг посёлка/шлагбаума
+#     condition: not
+
+alias: Шлагбаумы — авто-открытие для своих
+description: >
+  Детекция машины Frigate + гео-условие «телефон в пути» → открыть шлагбаум.
+mode: parallel
+max_exceeded: silent
+triggers:
+  - trigger: mqtt
+    topic: frigate/events
+    id: govorovo
+    value_template: >-
+      {{ value_json.type == 'new'
+         and value_json.after.camera == 'govorovo'
+         and value_json.after.label == 'car' }}
+  - trigger: mqtt
+    topic: frigate/events
+    id: lesnaia
+    value_template: >-
+      {{ value_json.type == 'new'
+         and value_json.after.camera == 'lesnaia'
+         and value_json.after.label == 'car' }}
+actions:
+  - choose:
+      # ---------- А.М.Видео: Говорово ----------
+      - conditions:
+          - condition: trigger
+            id: govorovo
+          - condition: state
+            entity_id: device_tracker.ТЕЛЕФОН
+            state: not_home
+        sequence:
+          - action: amvideo.open_barrier
+            target:
+              entity_id: button.1_shlagbaum_derevnia_govorovo_15072_otkryt
+
+      # ---------- ЕГДС: Ул. Лесная №1 ----------
+      - conditions:
+          - condition: trigger
+            id: lesnaia
+          - condition: state
+            entity_id: device_tracker.ТЕЛЕФОН
+            state: not_home
+        sequence:
+          - action: egds.open_barrier
+            target:
+              entity_id: button.ul_lesnaia_shlagbaum_no1_otkryt

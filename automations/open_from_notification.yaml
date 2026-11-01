@@ -1,0 +1,35 @@
+# Открытие шлагбаума кнопкой из уведомления (см. notify_car_detected.yaml).
+
+alias: Шлагбаумы — открытие из уведомления
+mode: parallel
+max_exceeded: silent
+triggers:
+  - trigger: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: OPEN_GOVOROVO
+    id: govorovo
+  - trigger: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: OPEN_LESNAIA
+    id: lesnaia
+actions:
+  - choose:
+      # ---------- А.М.Видео: Говорово ----------
+      - conditions:
+          - condition: trigger
+            id: govorovo
+        sequence:
+          - action: amvideo.open_barrier
+            target:
+              entity_id: button.1_shlagbaum_derevnia_govorovo_15072_otkryt
+
+      # ---------- ЕГДС: Ул. Лесная №1 ----------
+      - conditions:
+          - condition: trigger
+            id: lesnaia
+        sequence:
+          - action: egds.open_barrier
+            target:
+              entity_id: button.ul_lesnaia_shlagbaum_no1_otkryt

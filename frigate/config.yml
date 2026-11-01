@@ -1,0 +1,60 @@
+# Конфигурация Frigate 0.18 — детекция машин на CPU (без GPU).
+#
+# Детектор CPU встроен во Frigate: модель SSDLite MobileDet загружается
+# автоматически при первом старте (нужен интернет один раз).
+# Требования к CPU: инструкции AVX/AVX2, ~4 ГБ RAM на этот стек.
+
+mqtt:
+  enabled: true
+  host: mosquitto          # имя сервиса из docker-compose
+  port: 1883
+
+detectors:
+  cpu:
+    type: cpu
+    num_threads: 3
+
+logger:
+  level: info
+
+cameras:
+  govorovo:                # А.М.Видео — деревня Говорово (из мостика)
+    ffmpeg:
+      inputs:
+        - path: rtsp://mediamtx:8554/govorovo
+          roles: [detect]
+    detect:
+      enabled: true
+      fps: 5
+      width: 1280
+      height: 720
+    objects:
+      track:
+        - car
+    snapshots:
+      enabled: true
+      timestamp: false
+    record:
+      enabled: false       # включите, если нужна запись архива (растёт диск)
+
+  lesnaia:                 # ЕГДС — Ул. Лесная №1 (из мостика)
+    ffmpeg:
+      inputs:
+        - path: rtsp://mediamtx:8554/lesnaia
+          roles: [detect]
+    detect:
+      enabled: true
+      fps: 2               # сервер ЕГДС отдаёт ~2 кадра/с
+      width: 1280
+      height: 720
+    objects:
+      track:
+        - car
+    snapshots:
+      enabled: true
+      timestamp: false
+    record:
+      enabled: false
+
+# Если добавите камеры в мостик — скопируйте блок cameras.* и поменяйте
+# путь rtsp://mediamtx:8554/<id> и fps.
